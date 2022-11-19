@@ -1,0 +1,44 @@
+def read_json(json_path, image_path):
+    """
+    Read joints.mat file.
+    joints.mat in lspet is (14, 3, 10000); joints.mat in lsp is (3, 14, 2000)
+    :param mode: 'lspet' or 'lsp'
+    :param path: The path of joints.mat.
+    :param image_list: The array of image filenames.
+    :return:
+    key_point_list:(10000,14,3)
+    limits:(10000,3,14)
+    """
+    images = os.listdir(image_path)
+    data = json.load(open(json_path, 'rb'))
+    key_point_num = 4
+    key_point_list = []
+    id_list=[]
+
+    for n in range(len(images)):
+        data_list = [None] * 4
+        for j in range(key_point_num):
+            data_list[j]=data[images[n]][j]
+        key_point_list.append(data_list)
+        id_list.append(images[n])
+    limits = np.transpose(np.array(key_point_list), (0, 2, 1))
+    center_point_list = []
+    scale_list = []
+
+    for i in range(limits.shape[0]):
+        image = cv2.imread(image_path+images[i])
+        h = image.shape[0]
+        w = image.shape[1]
+
+        # Calculate the center points of each image
+        # [limits[i][0] > 0]这一维度中大于0的数据
+        center_x = (limits[i][0][limits[i][0] > 0].min() + limits[i][0][limits[i][0] < w].max()) / 2
+        center_y = (limits[i][1][limits[i][1] > 0].min() + limits[i][1][limits[i][1] < h].max()) / 2
+
+        center_point_list.append([center_x, center_y])
+
+        # Calculate the scale of each image
+        scale = (limits[i][1][limits[i][1] < h].max() - limits[i][1][limits[i][1] > 0].min() + 4) / 256
+        scale_list.append(scale)
+
+    return key_point_list, center_point_list, scale_list,id_list
